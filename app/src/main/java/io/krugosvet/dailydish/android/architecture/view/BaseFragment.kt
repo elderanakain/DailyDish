@@ -2,16 +2,24 @@ package io.krugosvet.dailydish.android.architecture.view
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.databinding.ViewDataBinding
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment.findNavController
 import io.krugosvet.dailydish.android.architecture.aspect.DisposableAspect
 import io.krugosvet.dailydish.android.architecture.aspect.IBindingContainer
 import io.krugosvet.dailydish.android.architecture.aspect.IStorageAspect
 import io.krugosvet.dailydish.android.architecture.viewmodel.ViewModel
+import io.krugosvet.dailydish.android.architecture.viewmodel.ViewModel.State
+import io.krugosvet.dailydish.android.ui.container.view.ContainerActivity
 import io.reactivex.disposables.Disposable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 abstract class BaseFragment<TBinding : ViewDataBinding, TViewModel : ViewModel<*>> :
   Fragment(),
@@ -27,9 +35,31 @@ abstract class BaseFragment<TBinding : ViewDataBinding, TViewModel : ViewModel<*
   ) =
     binding.root
 
+  override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+
+    viewModel.state.observe(viewLifecycleOwner) { state ->
+      val container = activity as ContainerActivity
+
+      container.binding.progressBar.isVisible = state is State.Loading
+    }
+  }
+
   override fun onDestroy() {
     super.onDestroy()
 
     clear()
+  }
+
+  protected inline fun <T> LiveData<T>.observe(crossinline block: (value: T) -> Unit) {
+    observe(viewLifecycleOwner) {
+      block(it)
+    }
+  }
+
+  protected inline fun launch(crossinline block: suspend CoroutineScope.() -> Unit) {
+    viewLifecycleOwner.lifecycleScope.launch {
+      block()
+    }
   }
 }
